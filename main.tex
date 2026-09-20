@@ -1,74 +1,72 @@
+% !TeX program = xelatex
+% Пропоузал семестрового проєкту, курс «Штучний інтелект», УКУ.
+% Компіляція: XeLaTeX + Biber. Потрібен файл ucuproposal.cls із шаблону.
 \documentclass[ukrainian]{ucuproposal}
-% Опції класу (можна комбінувати через кому):
-%   ukrainian | english  — мова документа й логотипу (за замовчуванням ukrainian)
-%   slogan                — додає гасло УКУ в колонтитул титулки (за замовчуванням вимкнено)
 
-% --------------------------------------------------------------------------
-% Метадані титульної сторінки
-% --------------------------------------------------------------------------
-\projecttitle{Назва вашого проєкту}
-\projecttagline{Одне речення про суть проєкту (опційно — можна видалити рядок)}
-
+\projecttitle{CHIMERA-Agent}
+\projecttagline{Агент, що на основі даних визначає потребу в біопсії}
 \teammember{Ласійчук Олексій}
 \teammember{Шимановський Владислав}
-% \teammember{Прізвище Ім'я} % третій учасник (опційно)
-% \teammember[https://linkedin.com/in/...]{Прізвище Ім'я} % опційне клікабельне посилання на профіль (LinkedIn тощо)
-
-\mentor{Прізвище Ім'я ментора} % якщо ментора немає — видаліть текст і залиште \mentor{}, рядок не друкується
-
-\track{research} % research | engineering — не друкується на титулці, лише для внутрішньої категоризації
-
-% \repo{https://github.com/team/project} % опційно; якщо репозиторію ще немає — залиште порожнім, рядок не друкується
-
+\mentor{Сумик Марта, Притула Ярослав, Косован Олександр}
+\track{engineering}
 \proposaldate{2026-09-21}
 
 \begin{document}
 \maketitlepage
 
-\section{Проблема та мотивація}
-% Що саме ви розв'язуєте і чому це важливо й цікаво в контексті ШІ?
-% Орієнтовно 1 абзац.
-Опишіть проблему, яку розв'язує ваш проєкт, та її значущість.
+\section{Problem and Motivation}
 
-\section{Огляд джерел та наявних рішень}
-% Що вже зроблено у світі за цією темою? Спирайтесь на references.bib,
-% цитуйте через \cite{}. Орієнтовно 3-5 джерел.
-Стисло опишіть наявні підходи та роботи, на які ви спираєтесь~\cite{example2023,example2022}.
+We selected the CHIMERA-Agent challenge, specifically its first track --- hereafter referred to as Task-1. The task is to determine whether a prostate biopsy is recommended based on MRI findings, clinical indicators, and the patient's medical history~\cite{chimeraTask1}. It is important to avoid unnecessary procedures (false positives) while not missing cases that require a biopsy (false negatives). To achieve this, the agent must consider data from multiple sources and justify its decision. Our final product will be a web application where users can enter patient data and receive a recommendation, an explanation with supporting sources, a confidence score, and a log of the agent's actions.
 
-\section{Дані}
-% Які набори даних, звідки, ліцензія. Якщо збираєте самі — як саме.
-% Якщо дані не потрібні — поясніть чому.
-Опишіть джерела даних, їх обсяг і ліцензію.
+\section{Review of Sources and Existing Solutions}
 
-\section{Підхід і методи}
-% Які алгоритми/архітектури плануєте використати, чи спираєтесь на
-% існуючі реалізації та як плануєте їх покращити.
-Опишіть плановий підхід і методи.
+The organizers provided a LangGraph baseline configured to use the pretrained Gemma~4 E2B-it model. It operates in a loop: the model selects a tool, invokes it, receives the result, and decides what to do next. MCP tools provide access to the patient's history, RAG retrieves relevant fragments from the EAU guidelines, and the same LLM generates the final JSON output~\cite{chimeraBaselineCode}. We will add a web interface, source tracking for the facts used in the final decision, control over unnecessary tool calls, and response validation. We will evaluate whether these changes reduce the number of unsupported claims without degrading decision quality.
+This agentic pattern were firstly described in ReAct: the model alternates reasoning with tool calls and uses their results to choose its next step~\cite{yao2023react}. We will also use RAG, as MedRAG research showed that retrieving medical documents can improve accuracy on questions in medical field~\cite{xiong2024medrag}. For evaluation, we will adapt ideas from MedAgentBench to check whether the agent retrieves the required patient data and whether the tools were used correctly~\cite{jiang2025medagentbench}.
 
-\section{Оцінювання результатів}
-% Метрики, baseline, спосіб порівняння, якісні очікування.
-Опишіть метрики та baseline, з яким порівнюватиметесь.
+\section{Data}
 
-\section{План і ризики}
-% Етапи до midterm і до фінального захисту, ключові ризики та план Б.
-Опишіть план роботи та основні ризики.
+Our local release contains 195 examples for Task-1, with reference decisions and explanations available for 91 of them. Each case contains structured clinical indicators and additional clinical records; precomputed MRI embeddings are available for some cases~\cite{chimeraData}. We will initially work with the structured indicators and available clinical text, including MRI findings. We will not train any models: we will use the pretrained models configured in the baseline and use the labeled cases for development and evaluation.
 
-% Приклад врізки з ключовими цифрами (опційно, можна видалити):
-% \begin{keyfacts}
-% \textbf{Ключові цифри:} 3 датасети \textperiodcentered\ 2 baseline-моделі \textperiodcentered\ 4 тижні до midterm
-% \end{keyfacts}
+\section{Approach and Methods}
 
-\section{Contribution statement}
-% Хто за що відповідає. Відсотки не обов'язкові — якщо хочете їх вказати,
-% додайте в квадратних дужках: \contribution[50\%]{Прізвище Ім'я}{...}
+The frontend will be implemented in React and the backend in FastAPI. The agent will run in a separate worker orchestrated by LangGraph. The LLM will be connected through a local inference server; for RAG, we will use the provided guideline index and EmbeddingGemma. The workflow will be as follows:
+
+\begin{enumerate}
+\item \textbf{Input data.} The user imports a JSON file, manually enters clinical indicators, or adds a textual report. We validate the input format, units, and required fields.
+
+\item \textbf{Orchestration.} The LLM receives the patient data and descriptions of the available tools, then makes requests through MCP. The agent repeats this cycle until it has enough information or reaches the maximum number of steps. Repeated requests with identical arguments reuse cached results.
+
+\item \textbf{RAG and agent state.} When necessary, the agent searches for relevant EAU recommendations~\cite{eauDiagnosis2026}. The state stores retrieved facts, their sources, and the history of tool calls. Following the idea studied in ALCE, we will check whether the cited sources support the claims in the explanation~\cite{gao2023alce}.
+
+\item \textbf{Decision.} In a separate call, the same LLM receives the collected facts and returns \texttt{yes/no}, a confidence score, and an explanation. The confidence score is the model's estimate, not a calibrated probability.
+
+\item \textbf{Validation.} Pydantic validates the JSON structure, while programmatic checks compare reported numerical values with the input and verify that source references exist. An additional LLM review checks for contradictions and unsupported claims. If an error is detected, one correction cycle is allowed.
+\end{enumerate}
+
+The web interface will display the recommendation, the explanation with supporting sources, and the action log. The result will also be exportable in the Task-1 format.
+
+\section{Evaluation}
+
+We will compare the baseline with our complete workflow, keeping the underlying model, patient data, and guideline database unchanged. The labeled cases will be split by patient into a development set for prompt tuning and a test set for the final comparison. Test labels and reference explanations will be kept separate from the agent's inputs and retrieval sources.
+
+We will measure F1 for the ``biopsy required'' class, execution time, number of tool calls, and JSON errors. We also plan to report the official Task-1 score using the organizers' evaluator when it is available~\cite{chimeraBaseline}. We will manually check claims against the patient data and cited guideline passages and report the proportion of unsupported claims. We will also separately test missing fields, contradictory records, and tool failures.
+
+\section{Plan and Risks}
+
+By the midterm, we plan to implement an end-to-end workflow in which the model invokes the required tools and produces correctly formatted output. By the final presentation, we plan to complete source tracking, validation, confidence display, and the action log, and conduct comparative experiments.
+
+The main risks are inference resource requirements, hallucinations, the small number of labeled cases, and the lost-in-the-middle effect observed in MedRAG, where relevant information may be skipped due to long context~\cite{xiong2024medrag}. We will limit retrieved context to relevant passages and check explanations against their sources. The final report will include both evaluation scores and the types of errors found.
+
+Currently the challenge has ended, and we cannot take part in first round.
+A second submission round has been announced for November~\cite{chimeraRounds}. We do not currently plan to participate. Our semester deliverables will be a locally evaluated prototype and a demonstration of the web application.
+
+\section{Contribution Statement}
+
 \begin{contributions}
-  \contribution{Прізвище Ім'я}{дані, препроцесинг, EDA}
-  \contribution{Прізвище Ім'я}{моделювання, евалюація, документація}
+\contribution{Oleksii Lasiichuk}{RAG, source tracking, web interface, and evaluation}
+\contribution{Vladyslav Shymanovskyi}{Backend, LLM and MCP integration, agent workflow, and data loading}
 \end{contributions}
 
-% Примітка: декларація використання AI-інструментів (AI usage) до цього
-% пропоузалу не входить — вона живе в README.md вашого репозиторію.
-
+\clearpage
 \ucuprintbibliography
-
 \end{document}
